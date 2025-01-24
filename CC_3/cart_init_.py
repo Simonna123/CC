@@ -1,42 +1,39 @@
-from products import dao
+import json
+from cart import dao
+from products import Product, get_product
 
 
-class Product:
-    def _init_(self, id: int, name: str, description: str, cost: float, qty: int = 0):
+class Cart:
+    def __init__(self, id: int, username: str, contents: list[Product], cost: float):
         self.id = id
-        self.name = name
-        self.description = description
+        self.username = username
+        self.contents = contents
         self.cost = cost
-        self.qty = qty
 
     @staticmethod
     def load(data):
-        return Product(data['id'], data['name'], data['description'], data['cost'], data['qty'])
+        contents = [get_product(item_id) for item_id in data['contents']]
+        return Cart(data['id'], data['username'], contents, data['cost'])
 
 
-def list_products() -> list[Product]:
-    # Fetch all products in one go and load them using a list comprehension
-    products = dao.list_products()
-    return [Product.load(product) for product in products]
+def get_cart(username: str) -> list[Product]:
+    cart_details = dao.get_cart(username)
+    if not cart_details:
+        return []
+   
+    items = []
+    for cart_detail in cart_details:
+        items.extend(get_product(item_id) for item_id in json.loads(cart_detail['contents']))
+    return items
 
 
-def get_product(product_id: int) -> Product:
-    # Fetch the product and directly load it
-    product_data = dao.get_product(product_id)
-    if not product_data:
-        raise ValueError(f"Product with id {product_id} not found")
-    return Product.load(product_data)
+def add_to_cart(username: str, product_id: int):
+    dao.add_to_cart(username, product_id)
 
 
-def add_product(product: dict):
-    # Perform lightweight validation here if needed
-    if 'id' not in product or 'name' not in product:
-        raise ValueError("Product must contain at least 'id' and 'name'")
-    dao.add_product(product)
+def remove_from_cart(username: str, product_id: int):
+    dao.remove_from_cart(username, product_id)
 
 
-def update_qty(product_id: int, qty: int):
-    if qty < 0:
-        raise ValueError("Quantity cannot be negative")
-    # Directly update the quantity in the database
-    dao.update_qty(product_id, qty)
+def delete_cart(username: str):
+    dao.delete_cart(username)
